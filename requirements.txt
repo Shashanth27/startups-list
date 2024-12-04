@@ -1,5 +1,5 @@
+webdriver-manager>=4.0.0,<5.0.0
 selenium==4.9.1
-beautifulsoup4==4.11.1
 pandas==1.5.2
+beautifulsoup4==4.11.1
 streamlit==1.15.0
-webdriver-manager==4.8.0  # This helps with managing chromedriver automatically
