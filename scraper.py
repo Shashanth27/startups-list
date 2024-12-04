@@ -19,16 +19,21 @@ def initialize_driver():
     """
     global driver
     if driver is None:
-        options = Options()
-        options.headless = True  # Run in headless mode for Streamlit hosting
-        options.add_argument("--no-sandbox")  # Required for containerized environments like Streamlit
-        options.add_argument("--disable-dev-shm-usage")  # Needed for Docker/Streamlit environments
-        options.add_argument("--disable-gpu")  # Disable GPU acceleration
-        options.add_argument("--remote-debugging-port=9222")  # Avoid potential port conflicts
-        options.binary_location = "/usr/bin/chromium-browser"  # Path to Chromium in Streamlit environment
+        try:
+            options = Options()
+            options.headless = True  # Run in headless mode for Streamlit hosting
+            options.add_argument("--no-sandbox")  # Required for containerized environments like Streamlit
+            options.add_argument("--disable-dev-shm-usage")  # Needed for Docker/Streamlit environments
+            options.add_argument("--disable-gpu")  # Disable GPU acceleration
+            options.add_argument("--remote-debugging-port=9222")  # Avoid potential port conflicts
+            options.binary_location = "/usr/bin/chromium-browser"  # Path to Chromium in Streamlit environment
 
-        # Use ChromeDriverManager to ensure the correct version of the driver is used
-        driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
+            # Ensure ChromeDriverManager uses the correct version of chromedriver for the environment
+            driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
+            print("✅ WebDriver initialized successfully.")
+        except Exception as e:
+            print(f"⚠️ Error initializing WebDriver: {e}")
+            driver = None  # Set driver to None in case of error
 
 def scrape_startups(start_page, end_page):
     """
@@ -43,6 +48,10 @@ def scrape_startups(start_page, end_page):
     """
     initialize_driver()  # Initialize driver only once
 
+    if driver is None:
+        print("⚠️ Driver initialization failed. Exiting scraping.")
+        return pd.DataFrame()  # Return empty dataframe if driver initialization fails
+
     base_url = "https://www.startupindia.gov.in/content/sih/en/search.html?roles=Startup&page="
     startup_list = []
     seen_startups = set()  # Set to track unique startups (using name as unique identifier)
@@ -50,60 +59,65 @@ def scrape_startups(start_page, end_page):
     for page in range(start_page, end_page + 1):
         print(f"🔍 Scraping page {page}...")
         url = base_url + str(page)
-        
-        # Load the page
-        driver.get(url)
 
-        # Wait for the elements to load (adjust timeout if needed)
-        WebDriverWait(driver, 10).until(
-            EC.presence_of_element_located((By.CLASS_NAME, "events-details"))
-        )
+        try:
+            # Load the page
+            driver.get(url)
 
-        # Grab the page source after rendering
-        soup = BeautifulSoup(driver.page_source, 'html.parser')
+            # Wait for the elements to load (adjust timeout if needed)
+            WebDriverWait(driver, 10).until(
+                EC.presence_of_element_located((By.CLASS_NAME, "events-details"))
+            )
 
-        # Locate all startup entries
-        startups = soup.find_all('div', class_='events-details')
+            # Grab the page source after rendering
+            soup = BeautifulSoup(driver.page_source, 'html.parser')
 
-        if not startups:
-            print(f"⚠️ No startups found on page {page}.")
-            continue
+            # Locate all startup entries
+            startups = soup.find_all('div', class_='events-details')
 
-        for startup in startups:
-            try:
-                print(f"📜 Scraping startup...")
+            if not startups:
+                print(f"⚠️ No startups found on page {page}.")
+                continue
 
-                # Extract startup name
-                name = startup.find('h3').text.strip()
-                print(f"✅ Name is scraped: {name}")
+            for startup in startups:
+                try:
+                    print(f"📜 Scraping startup...")
 
-                # Skip if the startup has already been seen
-                if name in seen_startups:
-                    print(f"⚠️ Duplicate startup found: {name}. Skipping...")
+                    # Extract startup name
+                    name = startup.find('h3').text.strip()
+                    print(f"✅ Name is scraped: {name}")
+
+                    # Skip if the startup has already been seen
+                    if name in seen_startups:
+                        print(f"⚠️ Duplicate startup found: {name}. Skipping...")
+                        continue
+
+                    # Extract startup stage
+                    stage = startup.find('span', class_='highlighted-text').text.strip()
+                    print(f"✅ Stage is scraped: {stage}")
+
+                    # Extract location details
+                    location_spans = startup.find('li', class_='location').find_all('span')
+                    location = ', '.join([span.text.strip() for span in location_spans])
+                    print(f"✅ Location is scraped: {location}")
+
+                    # Append the startup data to the list
+                    startup_list.append({
+                        "Name": name,
+                        "Stage": stage,
+                        "Location": location
+                    })
+
+                    # Mark this startup as seen
+                    seen_startups.add(name)
+
+                except AttributeError as e:
+                    print(f"⚠️ Skipping a startup due to missing data: {e}")
                     continue
 
-                # Extract startup stage
-                stage = startup.find('span', class_='highlighted-text').text.strip()
-                print(f"✅ Stage is scraped: {stage}")
-
-                # Extract location details
-                location_spans = startup.find('li', class_='location').find_all('span')
-                location = ', '.join([span.text.strip() for span in location_spans])
-                print(f"✅ Location is scraped: {location}")
-
-                # Append the startup data to the list
-                startup_list.append({
-                    "Name": name,
-                    "Stage": stage,
-                    "Location": location
-                })
-
-                # Mark this startup as seen
-                seen_startups.add(name)
-
-            except AttributeError as e:
-                print(f"⚠️ Skipping a startup due to missing data: {e}")
-                continue
+        except Exception as e:
+            print(f"⚠️ Error on page {page}: {e}")
+            continue  # Proceed to the next page even if one page fails
 
     return pd.DataFrame(startup_list)
 
@@ -116,6 +130,10 @@ def save_data(data, output_folder="output"):
     - data: A pandas DataFrame containing the scraped data.
     - output_folder: The folder where the CSV file will be saved.
     """
+    if data.empty:
+        print("⚠️ No data to save.")
+        return
+
     os.makedirs(output_folder, exist_ok=True)
     
     # Check for existing files and find the correct file name
