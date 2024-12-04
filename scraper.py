@@ -21,9 +21,10 @@ def initialize_driver():
     if driver is None:
         options = Options()
         options.headless = True  # Run in headless mode for Streamlit hosting
-        options.add_argument("--no-sandbox")  # Needed for Docker/Streamlit environments
+        options.add_argument("--no-sandbox")  # Required for containerized environments like Streamlit
         options.add_argument("--disable-dev-shm-usage")  # Needed for Docker/Streamlit environments
         options.add_argument("--disable-gpu")  # Disable GPU acceleration
+        options.add_argument("--remote-debugging-port=9222")  # Avoid potential port conflicts
         # Use ChromeDriverManager to ensure the correct version of the driver is used
         driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
 
