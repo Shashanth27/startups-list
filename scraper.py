@@ -7,15 +7,15 @@ from selenium.webdriver.support import expected_conditions as EC
 from bs4 import BeautifulSoup
 import pandas as pd
 import os
-from webdriver_manager.chrome import ChromeDriverManager
 from selenium.webdriver.chrome.service import Service
+from webdriver_manager.chrome import ChromeDriverManager
 
 # Global WebDriver instance (so it doesn't open multiple browsers)
 driver = None
 
 def initialize_driver():
     """
-    Initialize the Chrome WebDriver in headless mode.
+    Initialize the Chrome WebDriver in headless mode using Chromium for environments like Streamlit Cloud.
     """
     global driver
     if driver is None:
@@ -25,6 +25,8 @@ def initialize_driver():
         options.add_argument("--disable-dev-shm-usage")  # Needed for Docker/Streamlit environments
         options.add_argument("--disable-gpu")  # Disable GPU acceleration
         options.add_argument("--remote-debugging-port=9222")  # Avoid potential port conflicts
+        options.binary_location = "/usr/bin/chromium-browser"  # Path to Chromium in Streamlit environment
+
         # Use ChromeDriverManager to ensure the correct version of the driver is used
         driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
 
