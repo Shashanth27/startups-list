@@ -4,7 +4,6 @@ from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-from selenium.common.exceptions import TimeoutException
 from bs4 import BeautifulSoup
 import pandas as pd
 import os
@@ -37,7 +36,7 @@ def scrape_startups(start_page, end_page):
 
     base_url = "https://www.startupindia.gov.in/content/sih/en/search.html?roles=Startup&page="
     startup_list = []
-    seen_startups = set()  # Set to track unique startups by a combination of 'name' and 'location'
+    seen_startups = set()  # Set to track unique startups (using name as unique identifier)
 
     for page in range(start_page, end_page + 1):
         print(f"🔍 Scraping page {page}...")
@@ -47,16 +46,9 @@ def scrape_startups(start_page, end_page):
         driver.get(url)
 
         # Wait for the elements to load (adjust timeout if needed)
-        try:
-            WebDriverWait(driver, 10).until(
-                EC.presence_of_element_located((By.CLASS_NAME, "events-details"))
-            )
-        except TimeoutException:
-            print(f"⚠️ Timeout while waiting for page {page}.")
-            driver.save_screenshot(f"screenshot_page_{page}.png")  # Save screenshot for debugging
-            continue
-        
-        time.sleep(5)  # Allow extra time for dynamic content to load
+        WebDriverWait(driver, 10).until(
+            EC.presence_of_element_located((By.CLASS_NAME, "events-details"))
+        )
 
         # Grab the page source after rendering
         soup = BeautifulSoup(driver.page_source, 'html.parser')
@@ -76,6 +68,11 @@ def scrape_startups(start_page, end_page):
                 name = startup.find('h3').text.strip()
                 print(f"✅ Name is scraped: {name}")
 
+                # Skip if the startup has already been seen
+                if name in seen_startups:
+                    print(f"⚠️ Duplicate startup found: {name}. Skipping...")
+                    continue
+
                 # Extract startup stage
                 stage = startup.find('span', class_='highlighted-text').text.strip()
                 print(f"✅ Stage is scraped: {stage}")
@@ -85,25 +82,22 @@ def scrape_startups(start_page, end_page):
                 location = ', '.join([span.text.strip() for span in location_spans])
                 print(f"✅ Location is scraped: {location}")
 
-                # Check if the startup is already seen (by its unique combination)
-                unique_identifier = (name, location)
-                if unique_identifier in seen_startups:
-                    print(f"⚠️ Duplicate found: {name}, skipping.")
-                    continue
-
-                # Add to the seen set and append to the startup list
-                seen_startups.add(unique_identifier)
+                # Append the startup data to the list
                 startup_list.append({
                     "Name": name,
                     "Stage": stage,
                     "Location": location
                 })
 
+                # Mark this startup as seen
+                seen_startups.add(name)
+
             except AttributeError as e:
                 print(f"⚠️ Skipping a startup due to missing data: {e}")
                 continue
 
     return pd.DataFrame(startup_list)
+
 
 def save_data(data, output_folder="output"):
     """
@@ -114,20 +108,17 @@ def save_data(data, output_folder="output"):
     - output_folder: The folder where the CSV file will be saved.
     """
     os.makedirs(output_folder, exist_ok=True)
+    
+    # Check for existing files and find the correct file name
+    existing_files = [f for f in os.listdir(output_folder) if f.startswith("startups")]
+    file_num = len(existing_files)  # Find the number of existing files to append the correct number
+    
+    # Save the new data with a unique filename
+    csv_path = os.path.join(output_folder, f"startups({file_num}).csv")
+    data.to_csv(csv_path, index=False)
+    print(f"✅ Data saved to {csv_path}")
+    return csv_path
 
-    # Split data into smaller parts and save them to separate CSV files
-    num_files = (len(data) // 50) + 1  # Create multiple files with 50 records each
-    for i in range(num_files):
-        start_index = i * 50
-        end_index = (i + 1) * 50
-        chunk = data.iloc[start_index:end_index]
-        
-        # Save each chunk as a separate CSV file
-        csv_path = os.path.join(output_folder, f"startups_{i}.csv")
-        chunk.to_csv(csv_path, index=False)
-        print(f"✅ Data saved to {csv_path}")
-
-    return os.path.join(output_folder, "startups_*.csv")
 
 def close_driver():
     """
