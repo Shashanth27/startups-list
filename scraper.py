@@ -7,6 +7,8 @@ from selenium.webdriver.support import expected_conditions as EC
 from bs4 import BeautifulSoup
 import pandas as pd
 import os
+from webdriver_manager.chrome import ChromeDriverManager
+from selenium.webdriver.chrome.service import Service
 
 # Global WebDriver instance (so it doesn't open multiple browsers)
 driver = None
@@ -19,7 +21,11 @@ def initialize_driver():
     if driver is None:
         options = Options()
         options.headless = True  # Run in headless mode for Streamlit hosting
-        driver = webdriver.Chrome(options=options)
+        options.add_argument("--no-sandbox")  # Needed for Docker/Streamlit environments
+        options.add_argument("--disable-dev-shm-usage")  # Needed for Docker/Streamlit environments
+        options.add_argument("--disable-gpu")  # Disable GPU acceleration
+        # Use ChromeDriverManager to ensure the correct version of the driver is used
+        driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
 
 def scrape_startups(start_page, end_page):
     """
