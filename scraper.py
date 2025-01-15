@@ -15,20 +15,18 @@ driver = None
 
 def initialize_driver():
     """
-    Initialize the Chrome WebDriver in headless mode using Chromium for environments like Streamlit Cloud.
+    Initialize the Chrome WebDriver with necessary configurations for the current environment.
     """
     global driver
     if driver is None:
         try:
             options = Options()
-            options.headless = True  # Run in headless mode for Streamlit hosting
-            options.add_argument("--no-sandbox")  # Required for containerized environments like Streamlit
-            options.add_argument("--disable-dev-shm-usage")  # Needed for Docker/Streamlit environments
-            options.add_argument("--disable-gpu")  # Disable GPU acceleration
-            options.add_argument("--remote-debugging-port=9222")  # Avoid potential port conflicts
-            options.binary_location = "/usr/bin/chromium-browser"  # Path to Chromium in Streamlit environment
+            options.headless = False  # Set to True for headless mode
+            options.add_argument("--no-sandbox")
+            options.add_argument("--disable-dev-shm-usage")
+            options.add_argument("--disable-gpu")
 
-            # Ensure ChromeDriverManager uses the correct version of chromedriver for the environment
+            # Use WebDriver Manager to automatically handle ChromeDriver
             driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
             print("✅ WebDriver initialized successfully.")
         except Exception as e:
@@ -160,7 +158,7 @@ def close_driver():
 # Example usage within Streamlit
 if __name__ == "__main__":
     start_page = 1
-    end_page = 5  # Modify the number of pages you want to scrape
+    end_page = 25  # Modify the number of pages you want to scrape
     startups_data = scrape_startups(start_page, end_page)
     save_data(startups_data)
     close_driver()  # Ensure that the driver is closed after scraping is done
