@@ -3,3 +3,4 @@ playwright
 fastapi
 uvicorn
 python-dotenv
+aiofiles

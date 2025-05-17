@@ -8,7 +8,7 @@
 </head>
 <body class="bg-gray-100">
     <div class="container mx-auto px-4 py-8">
-        <h1 class="text-4xl font-bold text-center mb-8">Startup India Scraper</h1>
+        <h1 class="text-4xl font-bold text-center mb-8">🚀 Startup India Scraper</h1>
         
         <div class="max-w-md mx-auto bg-white rounded-lg shadow-md p-6 mb-8">
             <div class="mb-4">
@@ -29,7 +29,7 @@
             
             <button id="scrapeButton" 
                 class="w-full bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline">
-                Start Scraping
+                🔍 Start Scraping
             </button>
         </div>
 
@@ -62,7 +62,7 @@
                 </div>
                 <button id="downloadButton" 
                     class="mt-4 bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline">
-                    Download CSV
+                    ⬇️ Download CSV
                 </button>
             </div>
         </div>
@@ -137,17 +137,28 @@
 
             // Display stats
             const stats = document.getElementById('stats');
+            const uniqueStages = [...new Set(data.data.map(item => item.Stage))];
+            const uniqueLocations = [...new Set(data.data.map(item => item.Location))];
+            
             stats.innerHTML = `
                 <div class="bg-blue-100 p-4 rounded-lg">
                     <h3 class="font-bold">Total Startups</h3>
                     <p class="text-2xl">${data.count}</p>
+                </div>
+                <div class="bg-green-100 p-4 rounded-lg">
+                    <h3 class="font-bold">Unique Stages</h3>
+                    <p class="text-2xl">${uniqueStages.length}</p>
+                </div>
+                <div class="bg-purple-100 p-4 rounded-lg">
+                    <h3 class="font-bold">Unique Locations</h3>
+                    <p class="text-2xl">${uniqueLocations.length}</p>
                 </div>
             `;
 
             // Display table data
             const tableBody = document.getElementById('dataTable');
             tableBody.innerHTML = data.data.map(startup => `
-                <tr class="border-b">
+                <tr class="border-b hover:bg-gray-50">
                     <td class="px-4 py-2">${startup.Name}</td>
                     <td class="px-4 py-2">${startup.Stage}</td>
                     <td class="px-4 py-2">${startup.Location}</td>
