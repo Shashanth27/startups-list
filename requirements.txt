@@ -1,7 +1,4 @@
-webdriver-manager>=4.0.0,<5.0.0
-selenium
-pandas
-beautifulsoup4
 streamlit
-numpy
-chromium
+pandas
+playwright
+python-dotenv
